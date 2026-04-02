@@ -6,5 +6,5 @@ class Test(dApp):
     
 if __name__ == '__main__':
     app = Test()
-    app.set_local("fag","bag")
-    app.get_local("fag")
+    app.set_local("test","hi")
+    app.get_local("test")
