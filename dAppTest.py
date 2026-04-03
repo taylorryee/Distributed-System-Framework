@@ -1,10 +1,17 @@
 from myTest import dApp
+import time
 
-class Test(dApp):
-    def __init__(self):
-        super().__init__() #using super intilizes a chain if say dApp had a parent it would intilze dApps parenta s well
-    
+
+
 if __name__ == '__main__':
-    app = Test()
-    app.set_local("test","hi")
-    app.get_local("test")
+    app2=dApp()
+    app = dApp()
+    app.new_parm("boi","1738")
+
+    print(app.parms["boi"].value,flush=True)
+    app2.new_parm("boi","new value")
+    time.sleep(1)
+    print(app.parms["boi"].value,flush=True)
+
+
+
