@@ -30,7 +30,7 @@ class dApp(object):
             self.name = name 
             self.value = value 
             self.dAppInstance = dAppInstance
-            #self.dAppInstance.redis.set(name,value)
+
 
         def update_parm(self):
             updated_val = self.dAppInstance.redis.get(self.name)
@@ -42,20 +42,24 @@ class dApp(object):
 
     def handle_redis_event(self,message):
         key = message["channel"].split(":")[-1]
-        if key in self.parms: #We need this check because our redis_listener we setup on intilization listens for all key changes - 
+        if key in self.parms: #We need this check because our redis_listener we setup on intilization listens for all key changes to global redis - 
             #and we only care about key changes that are on keys that exisit in our instance
             for callback in self.callbacks[key]:
                 callback()
 
-    def new_parm(self,name,value):
-        if name not in self.parms:
+    def new_parm(self,name,value): 
+        redis_check = self.redis.set(name,value,nx=True) #returns True if we set, None if already set
+        if not redis_check:
+             self.parms[name] = self.Parm(name,self.redis.get(name),self)
+             self.callbacks[name] = [self.parms[name].update_parm]
+        else:
             self.parms[name] = self.Parm(name,value,self)
-            if name not in self.callbacks:
-                self.callbacks[name] = [self.parms[name].update_parm]
-            else:
-                self.callbacks[name].append(self.parms[name].update_parm)
-        
-        self.redis.set(name,value)
+            self.callbacks[name] = [self.parms[name].update_parm]
+            
+
+
+
+    #def update_key(self,key,value):
 
 
         
