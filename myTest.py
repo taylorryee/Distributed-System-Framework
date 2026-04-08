@@ -32,31 +32,44 @@ class dApp(object):
             self.dAppInstance = dAppInstance
 
 
-        def update_parm(self):
-            updated_val = self.dAppInstance.redis.get(self.name)
-            self.value = updated_val
+        def update_parm_callback(self,key,val):
+            self.value = val
+        
             
-
     def redis_listener(self):
         self.pubSub.psubscribe(**{"__keyspace@0__:*": self.handle_redis_event})
 
     def handle_redis_event(self,message):
-        key = message["channel"].split(":")[-1]
-        if key in self.parms: #We need this check because our redis_listener we setup on intilization listens for all key changes to global redis - 
+        name = message["channel"].split(":")[-1]
+        if name in self.parms: #We need this check because our redis_listener we setup on intilization listens for all key changes to global redis - 
             #and we only care about key changes that are on keys that exisit in our instance
-            for callback in self.callbacks[key]:
-                callback()
+            global_val = self.redis.get(name)
+            for callback in self.callbacks[name]: #callback functions accept (key,val)
+                callback(name,global_val)
 
-    def new_parm(self,name,value): 
+    def link_callbacks(self,name,callbacks):
+        if name not in self.callbacks:
+            self.callbacks[name] = []
+        self.callbacks[name].extend(callbacks)
+
+
+    def new_parm(self,name,value):#only create parm if it does not exist in global redis storage
+        if name in self.parms:#parm already exists locally
+            return 
         redis_check = self.redis.set(name,value,nx=True) #returns True if we set, None if already set
-        if not redis_check:
-             self.parms[name] = self.Parm(name,self.redis.get(name),self)
-             self.callbacks[name] = [self.parms[name].update_parm]
-        else:
-            self.parms[name] = self.Parm(name,value,self)
-            self.callbacks[name] = [self.parms[name].update_parm]
-            
+        if not redis_check: #if parm already exists globaly
+             global_val = self.redis.get(name)
+             self.parms[name] = self.Parm(name,global_val,self)
 
+        else:#if we created new parm
+            self.parms[name] = self.Parm(name,value,self)
+
+        self.link_callbacks(name,[self.parms[name].update_parm_callback,self.log_callback]) #Link callback
+
+
+    def log_callback(self,key,val):
+        print(f"\n{key} changed to {val}\n",flush=True)
+    
 
 
     #def update_key(self,key,value):
